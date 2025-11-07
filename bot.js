@@ -9,6 +9,30 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
+function buildPostText(data) {
+  let lines = [];
+
+  data.forEach((post) => {
+    // On prend uniquement les champs contenant du texte réel
+    ["postContent", "type"].forEach((key) => {
+      if (post[key] && post[key].trim() !== "") {
+        lines.push(post[key].trim());
+      }
+    });
+  });
+
+  return lines.join("\n");
+}
+
+function getFirstImage(data) {
+  for (let post of data) {
+    if (post.imgUrl && /^https?:\/\/.+\..+/.test(post.imgUrl.trim())) {
+      return post.imgUrl.trim();
+    }
+  }
+  return null;
+}
+
 function postPhantomData() {
   if (!fs.existsSync(PHANTOM_FILE)) {
     console.log("❌ JSON introuvable :", PHANTOM_FILE);
@@ -16,30 +40,7 @@ function postPhantomData() {
   }
 
   const data = JSON.parse(fs.readFileSync(PHANTOM_FILE, "utf-8"));
-
-  const lines = [];
-
-  data.forEach((post) => {
-    // On prend tous les champs qui contiennent du texte utile
-    [
-      "postContent",
-      "type",
-      "likeCount",
-      "commentCount",
-      "repostCount",
-      "imgUrl",
-    ].forEach((key) => {
-      if (
-        post[key] &&
-        post[key].trim() !== "" &&
-        !/^https?:\/\/.+\..+/.test(post[key].trim())
-      ) {
-        lines.push(post[key].trim());
-      }
-    });
-  });
-
-  const fullText = lines.join("\n");
+  const fullText = buildPostText(data);
 
   if (!fullText) {
     console.log("❌ Aucun texte à poster !");
@@ -57,11 +58,8 @@ function postPhantomData() {
         .setColor(0x0072ce)
         .setTimestamp(new Date());
 
-      // Cherche la première vraie image URL
-      const firstImage = data.find(
-        (p) => p.imgUrl && /^https?:\/\/.+\..+/.test(p.imgUrl.trim())
-      );
-      if (firstImage) embed.setImage(firstImage.imgUrl.trim());
+      const firstImage = getFirstImage(data);
+      if (firstImage) embed.setImage(firstImage);
 
       channel
         .send({ embeds: [embed] })
