@@ -4,66 +4,54 @@ import fs from "fs";
 // === CONFIGURATION ===
 const TOKEN = process.env.DISCORD_TOKEN; // Token du bot Discord
 const CHANNEL_ID = process.env.CHANNEL_ID; // ID du salon Discord
-const JSON_FILE = "output.json"; // Ton Phantom output
+const PHANTOM_FILE = "phantom_output.json"; // fichier JSON de Phantom
 
 // === INITIALISATION DU CLIENT DISCORD ===
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
-// === FONCTION POUR LIRE LE JSON ET POSTER ===
-async function fetchAndPost() {
-  try {
-    if (!fs.existsSync(JSON_FILE)) {
-      console.log(`❌ JSON introuvable : ${JSON_FILE}`);
-      return;
-    }
+// === FONCTION POUR POSTER LES POSTS ===
+function postPhantomData() {
+  if (!fs.existsSync(PHANTOM_FILE)) {
+    console.log("❌ JSON introuvable :", PHANTOM_FILE);
+    return;
+  }
 
-    const rawData = fs.readFileSync(JSON_FILE, "utf-8");
-    const posts = JSON.parse(rawData);
+  const posts = JSON.parse(fs.readFileSync(PHANTOM_FILE, "utf-8"));
 
-    if (!posts || posts.length === 0) {
-      console.log("❌ Aucun post trouvé dans le JSON");
-      return;
-    }
+  posts.forEach(async (post) => {
+    try {
+      const channel = await client.channels.fetch(CHANNEL_ID);
+      if (!channel) return console.log("❌ Salon introuvable !");
 
-    const channel = await client.channels.fetch(CHANNEL_ID);
-    if (!channel) {
-      console.log("❌ Salon Discord introuvable !");
-      return;
-    }
-
-    // On parcourt chaque post
-    for (const post of posts) {
       const embed = new EmbedBuilder()
-        .setTitle(post.postContent || "📢 Nouveau post LinkedIn")
+        .setTitle(post.postContent || post.type || "Nouveau post LinkedIn")
         .setURL(post.postUrl || "")
-        .setDescription(post.likeCount || "") // ici tu peux ajouter post.text ou autre champ
-        .addFields(
-          { name: "Type", value: post.type || "N/A", inline: true },
-          { name: "Auteur", value: post.author || "Anonyme", inline: true }
-        )
+        .setDescription(post.likeCount || "")
         .setColor(0x0072ce)
-        .setTimestamp(post.timestamp ? new Date(post.timestamp) : new Date());
+        .setTimestamp(new Date(post.postTimestamp || Date.now()))
+        .addFields(
+          { name: "Auteur", value: post.author || "Anonyme", inline: true },
+          { name: "Type", value: post.type || "—", inline: true }
+        );
 
       await channel.send({ embeds: [embed] });
-      console.log(`✅ Post envoyé : ${post.postContent?.slice(0, 50)}...`);
+      console.log("✅ Post envoyé :", post.postContent);
+    } catch (err) {
+      console.log("❌ Erreur en postant :", err);
     }
-  } catch (err) {
-    console.error("❌ Erreur lors du fetch/post :", err);
-  }
+  });
 }
 
 // === READY EVENT ===
-client.once("ready", async () => {
+client.once("ready", () => {
   console.log(`Bot connecté en tant que ${client.user.tag} !`);
+  postPhantomData(); // poste une première fois au démarrage
 
-  // Premier run immédiat
-  await fetchAndPost();
-
-  // Répétition toutes les 10 minutes
-  setInterval(fetchAndPost, 10 * 60 * 1000);
+  // Poste toutes les 10 minutes
+  setInterval(postPhantomData, 10 * 60 * 1000);
 });
 
-// === LOGIN DU BOT ===
+// === LANCEMENT DU BOT ===
 client.login(TOKEN);
