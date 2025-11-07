@@ -1,17 +1,14 @@
 import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
 import fs from "fs";
 
-// === CONFIGURATION ===
 const TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const PHANTOM_FILE = "phantom_output.json";
 
-// === INITIALISATION DU CLIENT DISCORD ===
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
-// === FONCTION POUR ASSEMBLER ET POSTER LES POSTS ===
 function postPhantomData() {
   if (!fs.existsSync(PHANTOM_FILE)) {
     console.log("❌ JSON introuvable :", PHANTOM_FILE);
@@ -20,17 +17,15 @@ function postPhantomData() {
 
   const data = JSON.parse(fs.readFileSync(PHANTOM_FILE, "utf-8"));
 
-  // On crée un tableau pour récupérer chaque ligne utile
   const textParts = [];
 
   data.forEach((post) => {
     if (post.postContent) textParts.push(post.postContent.trim());
     if (post.type) textParts.push(post.type.trim());
     if (post.likeCount) textParts.push(post.likeCount.trim());
-    if (post.imgUrl) textParts.push(post.imgUrl.trim());
+    // On ignore imgUrl ici pour le texte
   });
 
-  // On assemble le texte avec des sauts de ligne
   const fullText = textParts.join("\n");
 
   if (!fullText) {
@@ -49,26 +44,33 @@ function postPhantomData() {
         .setColor(0x0072ce)
         .setTimestamp(new Date());
 
-      // Si une image existe dans le JSON, on la met
-      const firstImage = data.find((p) => p.imgUrl && p.imgUrl.trim() !== "");
-      if (firstImage) embed.setImage(firstImage.imgUrl);
+      // Vérifie que imgUrl est une vraie URL
+      const firstImage = data.find(
+        (p) =>
+          p.imgUrl &&
+          p.imgUrl.trim() !== "" &&
+          /^https?:\/\/.+\..+/.test(p.imgUrl.trim())
+      );
+      if (firstImage) embed.setImage(firstImage.imgUrl.trim());
 
-      channel.send({ embeds: [embed] });
-      console.log("✅ Post complet envoyé !");
+      channel
+        .send({ embeds: [embed] })
+        .then(() => {
+          console.log("✅ Post complet envoyé !");
+        })
+        .catch((err) => {
+          console.log("❌ Erreur en postant :", err);
+        });
     })
     .catch((err) => {
-      console.log("❌ Erreur en postant :", err);
+      console.log("❌ Erreur en récupérant le salon :", err);
     });
 }
 
-// === READY EVENT ===
 client.once("ready", () => {
   console.log(`Bot connecté en tant que ${client.user.tag} !`);
-  postPhantomData(); // envoie au démarrage
-
-  // toutes les 10 minutes
+  postPhantomData();
   setInterval(postPhantomData, 10 * 60 * 1000);
 });
 
-// === LANCEMENT DU BOT ===
 client.login(TOKEN);
