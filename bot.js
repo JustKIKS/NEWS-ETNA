@@ -17,16 +17,29 @@ function postPhantomData() {
 
   const data = JSON.parse(fs.readFileSync(PHANTOM_FILE, "utf-8"));
 
-  const textParts = [];
+  const lines = [];
 
   data.forEach((post) => {
-    if (post.postContent) textParts.push(post.postContent.trim());
-    if (post.type) textParts.push(post.type.trim());
-    if (post.likeCount) textParts.push(post.likeCount.trim());
-    // On ignore imgUrl ici pour le texte
+    // On prend tous les champs qui contiennent du texte utile
+    [
+      "postContent",
+      "type",
+      "likeCount",
+      "commentCount",
+      "repostCount",
+      "imgUrl",
+    ].forEach((key) => {
+      if (
+        post[key] &&
+        post[key].trim() !== "" &&
+        !/^https?:\/\/.+\..+/.test(post[key].trim())
+      ) {
+        lines.push(post[key].trim());
+      }
+    });
   });
 
-  const fullText = textParts.join("\n");
+  const fullText = lines.join("\n");
 
   if (!fullText) {
     console.log("❌ Aucun texte à poster !");
@@ -44,12 +57,9 @@ function postPhantomData() {
         .setColor(0x0072ce)
         .setTimestamp(new Date());
 
-      // Vérifie que imgUrl est une vraie URL
+      // Cherche la première vraie image URL
       const firstImage = data.find(
-        (p) =>
-          p.imgUrl &&
-          p.imgUrl.trim() !== "" &&
-          /^https?:\/\/.+\..+/.test(p.imgUrl.trim())
+        (p) => p.imgUrl && /^https?:\/\/.+\..+/.test(p.imgUrl.trim())
       );
       if (firstImage) embed.setImage(firstImage.imgUrl.trim());
 
