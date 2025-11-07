@@ -9,14 +9,14 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
-function buildPostText(data) {
+function extractText(data) {
   let lines = [];
 
-  data.forEach((post) => {
-    // On prend uniquement les champs contenant du texte réel
-    ["postContent", "type"].forEach((key) => {
-      if (post[key] && post[key].trim() !== "") {
-        lines.push(post[key].trim());
+  data.forEach((obj) => {
+    const fields = ["postContent", "type"];
+    fields.forEach((field) => {
+      if (obj[field] && obj[field].trim().length > 3) {
+        lines.push(obj[field].trim());
       }
     });
   });
@@ -24,61 +24,48 @@ function buildPostText(data) {
   return lines.join("\n");
 }
 
-function getFirstImage(data) {
-  for (let post of data) {
-    if (post.imgUrl && /^https?:\/\/.+\..+/.test(post.imgUrl.trim())) {
-      return post.imgUrl.trim();
-    }
+function extractImage(data) {
+  for (let obj of data) {
+    if (obj.imgUrl && obj.imgUrl.startsWith("http")) return obj.imgUrl;
   }
   return null;
 }
 
-function postPhantomData() {
+function postLinkedIn() {
   if (!fs.existsSync(PHANTOM_FILE)) {
     console.log("❌ JSON introuvable :", PHANTOM_FILE);
     return;
   }
 
-  const data = JSON.parse(fs.readFileSync(PHANTOM_FILE, "utf-8"));
-  const fullText = buildPostText(data);
+  const data = JSON.parse(fs.readFileSync(PHANTOM_FILE, "utf8"));
+  const postText = extractText(data);
+  const image = extractImage(data);
 
-  if (!fullText) {
-    console.log("❌ Aucun texte à poster !");
-    return;
-  }
+  if (!postText) return console.log("❌ Aucun texte à poster.");
 
   client.channels
     .fetch(CHANNEL_ID)
     .then((channel) => {
-      if (!channel) return console.log("❌ Salon introuvable !");
-
       const embed = new EmbedBuilder()
         .setTitle("📢 Nouveau post LinkedIn")
-        .setDescription(fullText)
+        .setDescription(postText)
         .setColor(0x0072ce)
         .setTimestamp(new Date());
 
-      const firstImage = getFirstImage(data);
-      if (firstImage) embed.setImage(firstImage);
+      if (image) embed.setImage(image);
 
       channel
         .send({ embeds: [embed] })
-        .then(() => {
-          console.log("✅ Post complet envoyé !");
-        })
-        .catch((err) => {
-          console.log("❌ Erreur en postant :", err);
-        });
+        .then(() => console.log("✅ Post LinkedIn envoyé !"))
+        .catch((err) => console.log("❌ Erreur en postant :", err));
     })
-    .catch((err) => {
-      console.log("❌ Erreur en récupérant le salon :", err);
-    });
+    .catch((err) => console.log("❌ Impossible de récupérer le salon :", err));
 }
 
 client.once("ready", () => {
-  console.log(`Bot connecté en tant que ${client.user.tag} !`);
-  postPhantomData();
-  setInterval(postPhantomData, 10 * 60 * 1000);
+  console.log(`Bot connecté en tant que ${client.user.tag}`);
+  postLinkedIn();
+  setInterval(postLinkedIn, 10 * 60 * 1000);
 });
 
 client.login(TOKEN);
