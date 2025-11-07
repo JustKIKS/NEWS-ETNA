@@ -9,7 +9,7 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
-// === READY EVENT ===
+// === READY EVENT ====
 client.once("ready", async () => {
   console.log(`Bot connecté en tant que ${client.user.tag} !`);
 
