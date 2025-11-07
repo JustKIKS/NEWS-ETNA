@@ -1,51 +1,26 @@
-import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
 import fs from "fs";
-import path from "path";
+import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
 
-// === CONFIGURATION ===
-const TOKEN = process.env.DISCORD_TOKEN; // Ton token Discord
-const CHANNEL_ID = process.env.CHANNEL_ID; // ID du salon Discord
-const CSV_FILE = path.join(process.cwd(), "phantom_output.csv"); // Le CSV téléchargé depuis Phantombuster
+const TOKEN = process.env.DISCORD_TOKEN;
+const CHANNEL_ID = process.env.CHANNEL_ID;
 const LAST_POST_FILE = "last_post.txt";
+const JSON_FILE = "phantom_output.json"; // <- ici ton JSON
 
-// === INITIALISATION DU CLIENT DISCORD ===
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
-// === FONCTION POUR CONVERTIR LE CSV EN JSON ===
-function csvToJson(csvPath) {
-  const csvData = fs.readFileSync(csvPath, "utf-8");
-  const lines = csvData
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l);
-  const header = lines[0].split(",").map((h) => h.trim());
-  const dataLines = lines.slice(1);
-
-  const items = dataLines.map((line) => {
-    const values = line.split(",").map((v) => v.trim());
-    const obj = {};
-    header.forEach((h, i) => {
-      obj[h] = values[i] || "";
-    });
-    return obj;
-  });
-  return items;
-}
-
-// === FONCTION POUR POSTER LES POSTS DANS DISCORD ===
 async function fetchAndPost() {
   try {
-    if (!fs.existsSync(CSV_FILE)) {
-      console.log("❌ CSV introuvable :", CSV_FILE);
+    if (!fs.existsSync(JSON_FILE)) {
+      console.log("❌ JSON introuvable :", JSON_FILE);
       return;
     }
 
-    const data = csvToJson(CSV_FILE);
+    const data = JSON.parse(fs.readFileSync(JSON_FILE, "utf-8"));
     if (!data || data.length === 0) return console.log("Aucun post trouvé.");
 
-    const latest = data[0]; // On prend le dernier post
+    const latest = data[0]; // dernier post
     const lastSent = fs.existsSync(LAST_POST_FILE)
       ? fs.readFileSync(LAST_POST_FILE, "utf-8")
       : "";
@@ -72,23 +47,16 @@ async function fetchAndPost() {
 
     await channel.send({ embeds: [embed] });
     fs.writeFileSync(LAST_POST_FILE, latest.posturl);
-
     console.log("✅ Post envoyé !");
   } catch (err) {
     console.error("Erreur fetchAndPost:", err);
   }
 }
 
-// === READY EVENT ===
-client.once("ready", async () => {
+client.once("ready", () => {
   console.log(`Bot connecté en tant que ${client.user.tag} !`);
-
-  // Premier run
-  await fetchAndPost();
-
-  // Vérifie toutes les 10 minutes
+  fetchAndPost();
   setInterval(fetchAndPost, 10 * 60 * 1000);
 });
 
-// === LANCEMENT DU BOT ===
 client.login(TOKEN);
