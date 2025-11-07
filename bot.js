@@ -1,3 +1,4 @@
+//ss
 import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
 import fs from "fs";
 
