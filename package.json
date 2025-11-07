@@ -1,0 +1,24 @@
+{
+  "name": "etnabot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JustKIKS/NEWS-ETNA.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JustKIKS/NEWS-ETNA/issues"
+  },
+  "homepage": "https://github.com/JustKIKS/NEWS-ETNA#readme",
+  "dependencies": {
+    "discord.js": "^14.24.2",
+    "node-fetch": "^3.3.2"
+  }
+}
