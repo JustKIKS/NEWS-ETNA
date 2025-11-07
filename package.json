@@ -1,9 +1,11 @@
 {
   "name": "etnabot",
   "version": "1.0.0",
-  "description": "",
+  "description": "Bot Discord pour poster les posts LinkedIn de l'école ETNA",
   "main": "bot.js",
+  "type": "module",
   "scripts": {
+    "start": "node bot.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
